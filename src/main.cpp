@@ -71,9 +71,10 @@ void initField(bool randomize);
 bool current[ROWS][COLS] = {};
 bool next[ROWS][COLS] = {};
 
+//simple stale detection
 #define STALE_LIMIT 50
-int numberAlive[STALE_LIMIT];
-int iteration;
+int lastAlive;
+int staleIterations;
 
 int currentDelay = DELAYTIME;
 
@@ -97,12 +98,8 @@ void initField(bool randomize){
       mx.setPoint(r,c,next[r][c]);
     }
   }
-  memset(numberAlive,0,STALE_LIMIT * sizeof(int));
-  iteration = 0;
-}
-
-void notFound(AsyncWebServerRequest *request) {
-    request->send(404, "text/plain", "Not found");
+  staleIterations = 0;
+  lastAlive = 0;
 }
 
 void setupWiFi(){
@@ -135,13 +132,14 @@ void setupWebServer(){
         delay(100);
         ESP.reset();
     });
-  server.onNotFound(notFound);
+  server.onNotFound([](AsyncWebServerRequest *request){
+    request->send(404, "text/plain", "Not found");
+  });
   AsyncElegantOTA.begin(&server); 
   server.begin();
 }
 
 void setup(){
-  delay(2000);
   setupWiFi();
   mx.begin();
   timeClient.begin();
@@ -240,21 +238,19 @@ void runDot(){
 }
 
 bool isStale(){
-  for(int i = 1; i < STALE_LIMIT; i++){
-    if(! (numberAlive[0] == numberAlive[i])){
-      return false;
-    }
-  }
-  return true;
+  return staleIterations >= STALE_LIMIT;
 }
 
 void loop(){
     if(isStale()){
       initField();
     }
-    numberAlive[iteration%STALE_LIMIT] = showNext();
+    int currentAlive = showNext();
+    if(currentAlive == lastAlive){
+      staleIterations++;
+    }
+    lastAlive = currentAlive;
     gameOfLife();
-    iteration++;
     delay(currentDelay);
 //  runDot();
 }

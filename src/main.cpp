@@ -66,7 +66,8 @@ int getRow(int r, int c);
 int getCol(int r, int c);
 void initField();
 void initField(bool randomize);
-
+void testpattern();
+bool runtest = true;
 
 bool current[ROWS][COLS] = {};
 bool next[ROWS][COLS] = {};
@@ -131,6 +132,10 @@ void setupWebServer(){
         request->redirect("/");
         delay(100);
         ESP.reset();
+    });
+  server.on("/test", HTTP_POST, [](AsyncWebServerRequest *request){
+        request->redirect("/");
+        runtest = true;
     });
   server.onNotFound([](AsyncWebServerRequest *request){
     request->send(404, "text/plain", "Not found");
@@ -237,11 +242,35 @@ void runDot(){
   }
 }
 
+void testpattern(){
+  unsigned long testDelay = 100; 
+  mx.clear();
+  for(int r = 0; r < ROWS; r++){
+    for(int c = 0; c < COLS; c++){
+      mx.setPoint(getRow(r,c),getCol(r,c),true);
+    }
+    delay(testDelay);
+    mx.clear();
+  }
+  mx.clear();
+  for(int c = 0; c < COLS; c++){
+    for(int r = 0; r < ROWS; r++){
+      mx.setPoint(getRow(r,c),getCol(r,c),true);
+    }
+    delay(testDelay);
+    mx.clear();
+  }
+}
+
 bool isStale(){
   return staleIterations >= STALE_LIMIT;
 }
 
 void loop(){
+    if(runtest){
+      testpattern();
+      runtest = false;
+    }
     if(isStale()){
       initField();
     }
